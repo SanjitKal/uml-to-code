@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <title>Welcome!</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" />
+  </head>
+  <body>
+    <h1 class = "text-center">
+      Welcome <%= username %>!
+    </h1>
+    <h2>Add a new diagram.</h2>
+    <form action= "/", method="POST">
+      Diagram Name: <br />
+      <input type="text" name="diagram_name" /> <br />
+      <button type="submit">Create</button>
+    </form>
+    <h2>Edit your creations below.</h2>
+      <ul>
+         <% creation_names.forEach(function(name){ %>
+         <li><%- name %></li>
+         <form action="/edit" method="post">
+            <button name="name" value="<%= name %>">Edit</button>
+        </form>
+        <form action="/delete" method="post">
+            <button name="name" value="<%= name %>">Delete</button>
+        </form>
+       <%});%>
+      </ul>
+  <h3> Log out. </h3>
+  <form action="/account/logout" method="post">
+      <button name="logout">Log out</button>
+  </form>
+  </body>
+</html>

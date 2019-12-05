@@ -1,26 +1,37 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
+var bodyParser = require('body-parser')
+var cookieSession = require('cookie-session')
+var mongoose = require('mongoose')
 var logger = require('morgan');
-
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-
+var accountRouter = require('./routes/account');
 var app = express();
+
+mongoose.connect('mongodb://localhost:27017/uml_app', {useNewUrlParser: true})
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.engine('html', require('ejs').__express)
+app.set('view engine', 'html')
+
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+
+app.use(
+  cookieSession({
+    name: 'local-session',
+    keys: ['spooky'],
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  })
+)
+
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/account', accountRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -35,7 +46,8 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('error');
+  res.render('error.html');
+  console.log(err)
 });
 
 module.exports = app;

@@ -1,0 +1,219 @@
+<html>
+<head>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style type="text/css">
+        #mynetwork {
+            width: 600px;
+            height: 400px;
+            border: 1px solid lightgray;
+        }
+    </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<script type="text/javascript">
+    // create an array with nodes
+    $.ajax({
+      url: "/get_diagrams",
+      type: 'GET',
+      success: function(res) {
+        var node_list = []
+        var edge_list = []
+        var res_obj = JSON.parse(res)
+        console.log(res_obj)
+        // Populate node list
+        for (var i = 0; i < res_obj.classes.length; i++) {
+            node_list.push({id: i, label: res_obj.classes[i].name, obj: res_obj.classes[i]})
+        }
+
+        // Populate edge_list
+        for (var i = 0; i < node_list.length; i++) {
+            var node_obj = node_list[i]
+            var from_label = node_obj.label
+            var from_obj = res_obj.classes.filter(function(value, index, arr){
+                return value.name == from_label
+            });
+
+            from_obj = from_obj[0]
+
+            // All objects that from depends on
+            var to_objs = res_obj.classes.filter(function(value, index, arr){
+                return from_obj.dependencies.includes(value.name)
+            });
+
+            // All of their labels
+            var to_labels = to_objs.map(result => result.name)
+
+            // For each of these labels
+            for (var j = 0; j < to_labels.length; j++) {
+                // Get the to_node from the node_list
+                var to_node = node_list.filter(function(value, index, arr){
+                    return value.label == to_labels[j]
+                });
+
+                // Get the id
+                to_node = to_node[0];
+                var to_id = to_node.id
+
+                // Add a new edge
+                edge_list.push({from: i, to: to_id})
+            }
+        }
+
+        var nodes = new vis.DataSet(node_list);
+
+        // create an array with edges
+        var edges = new vis.DataSet(edge_list);
+
+        // create a network
+        var container = document.getElementById('mynetwork');
+
+        // provide the data in the vis format
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {};
+
+        // initialize your network!
+        var network = new vis.Network(container, data, options);
+        network.on( 'click', function(properties) {
+            var ids = properties.nodes;
+            var clickedNodes = nodes.get(ids);
+            if (clickedNodes[0] == undefined) {
+                return
+            }
+            // Display modal window in javascript
+            var modal_body = document.getElementById("modal-body")
+            while (modal_body.lastChild) {
+                modal_body.removeChild(modal_body.lastChild)
+            }
+            var class_name = document.createElement('h3')
+            console.log(clickedNodes)
+            class_name.innerHTML = "Class Name: " + clickedNodes[0].obj.name
+
+            modal_body.appendChild(class_name)
+            modal_body.appendChild(document.createElement('hr'))
+
+
+            var fields_list = document.createElement('h4')
+            fields_list.innerHTML = 'Fields'
+            modal_body.appendChild(fields_list)
+
+            var f_list_elt = document.createElement('ul')
+            // iterate over all fields
+            var fields = clickedNodes[0].obj.fields
+            for (var i = 0; i < fields.length; i++) {
+                var f_elt = document.createElement('li')
+                f_elt.innerHTML = 'name: ' + fields[i].name + ", type: " + fields[i].type 
+                fields_list.appendChild(f_elt)
+            }
+            //
+
+            modal_body.appendChild(f_list_elt)
+            modal_body.appendChild(document.createElement('hr'))
+
+            var methods_list = document.createElement('h4')
+            methods_list.innerHTML = 'Methods'
+            modal_body.appendChild(methods_list)
+
+            var m_list_elt = document.createElement('ul')
+            // iterate over all methods
+            var methods = clickedNodes[0].obj.methods
+            for (var i = 0; i < methods.length; i++) {
+                var m_elt = document.createElement('li')
+                m_elt.innerHTML = 'name: ' + methods[i].name + ", arity: " + methods[i].arity + ", type: " + methods[i].return_type 
+                methods_list.appendChild(m_elt)
+            }
+            //
+
+            modal_body.appendChild(m_list_elt)
+
+            document.getElementById("modal").click();
+            console.log('clicked nodes:', clickedNodes);
+        });
+      }
+    });
+</script>
+<h1 class = "text-center"> Diagram '<%= name %>' </h1>
+<div class="container">
+    <div class="row">
+        <div class="col-lg-6">
+            
+        <h2>Add a Class.</h2>
+        <form action= "/add_class" method="POST">
+        <label for="class_name">Class name</label>
+          <input type="text" name="class_name" /> <br />
+          <button type="submit">Add class</button>
+        </form>
+        <h2>Add a Dependency.</h2>
+        <form action= "/add_edge" method="POST">
+        <label for="from">From</label>
+          <input type="text" name="from" /> <br />
+        <label for="to">To</label>
+          <input type="text" name="to" /> <br />
+          <button type="submit">Add Dependency</button>
+        </form>
+    <h2>Add a Field.</h2>
+    <form action= "/add_field" method="POST">
+    <label for="class_name">Class Name</label>
+      <input type="text" name="class_name" /> <br />
+    <label for="field_name">Field Name</label>
+      <input type="text" name="field_name" /> <br />
+    <label for="field_type">Field Type</label>
+      <input type="text" name="field_type" /> <br />
+      <button type="submit">Add Field</button>
+    </form>
+    <h2>Add a Method.</h2>
+    <form action= "/add_method" method="POST">
+    <label for="class_name">Class Name</label>
+      <input type="text" name="class_name" /> <br />
+    <label for="method_name">Method Name</label>
+      <input type="text" name="method_name" /> <br />
+    <label for="return_type">Return Type</label>
+      <input type="text" name="return_type" /> <br />
+    <label for="arity">Arity</label>
+      <input type="text" name="arity" /> <br />
+      <button type="submit">Add Method</button>
+    </form>
+        </div>
+        <div class="col-lg-6">
+            <div id="mynetwork"></div>
+
+        </div>
+    </div>
+</div>
+</div>
+<div class="container">
+  <!-- Trigger the modal with a button -->
+  <button id = "modal" type="button" class="hidden" data-toggle="modal" data-target="#myModal">Open Modal</button>
+
+  <!-- Modal -->
+  <div class="modal fade" id="myModal" role="dialog">
+    <div class="modal-dialog">
+    
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h2 class="modal-title">Class Info</h2>
+        </div>
+        <div id = "modal-body" class="modal-body">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+</div>
+</body>
+</html>
+
